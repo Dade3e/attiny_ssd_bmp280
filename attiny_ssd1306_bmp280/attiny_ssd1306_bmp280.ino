@@ -1,15 +1,11 @@
-/*  BatteryTesterAttiny.ino  -
-  2015 Copyright (c) Andreas Spiess  All right reserved.
-  Author: Andreas Spiess
-  This program is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
-*/
+// ATMEL ATTINY 25/45/85 / ARDUINO
+//
+//                  +-\/-+
+// Ain0 (D 5) PB5  1|    |8  Vcc
+// Ain3 (D 3) PB3  2|    |7  PB2 (D 2) Ain1
+// Ain2 (D 4) PB4  3|    |6  PB1 (D 1) pwm1
+//            GND  4|    |5  PB0 (D 0) pwm0
+//                  +----+
 
 //#include <TinyOzOLEDlimpfish.h>
 #include <TinyOzOLED.h>
@@ -17,26 +13,29 @@
 
 #include <forcedClimate.h>
 
-
+#include <avr/sleep.h> //Needed for sleep_mode
+#include <avr/wdt.h> //Needed to enable/disable watch dog timer
 
 // ATtiny Pin 5 = SDA                   ATtiny Pin 6 = (D1) to LED2
 // ATtiny Pin 7 = SCK                    ATtiny Pin 8 = VCC (2.7-5.5V)
-
-#define FET 1          // ATtiny Pin 6
-#define ADCVOLT A2     // ATtiny Pin 3
-#define ADCCURRENT A3  // ATtiny Pin 2
-
-const float FACTOR = 2.2;    // Adjust for 2:1 Voltage divider and internal reference
 
 // Create an instance of a climate sensor. The parameters I2C bus and I2C address are optional. For example:
 // - ForcedClimate climateSensor = ForcedClimate(Wire, 0x76);
 // - ForcedClimate climateSensor = ForcedClimate(TinyWireM, 0x77);
 ForcedClimate climateSensor = ForcedClimate(TinyWireM, 0x76);
 
-
+const byte SWITCH = 4; // pin 3 / PCINT4
 
 void setup() {
   analogReference(INTERNAL);      // use precise internal reference
+  ADCSRA &= ~(1<<ADEN); //Disable ADC, saves ~230uA
+
+  pinMode (SWITCH, INPUT);
+  digitalWrite (SWITCH, HIGH);  // internal pull-up
+
+  PCMSK  |= bit (PCINT4);  // want pin D4 / pin 3
+  GIFR   |= bit (PCIF);    // clear any outstanding interrupts
+  GIMSK  |= bit (PCIE);    // enable pin change interrupts
 
   climateSensor.begin();
 
@@ -48,16 +47,56 @@ void setup() {
   OzOled.sendCommand(0xA1);        // set Orientation
   OzOled.sendCommand(0xC8);
 
-  pinMode(FET, OUTPUT);
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN); //Power down everything, wake up from WDT
+  sleep_enable();
+}
+
+//This runs each time the watch dog wakes us up from sleep
+ISR(PCINT0_vect) {
+  //watchdog_counter++;
 }
 
 void loop() {
+  
+  
+
+  OzOled.setPowerOn();
   OzOled.clearDisplay();
   displayTemp();
   delay(2000);
+  //setup_watchdog(9); //Setup watchdog to go off after 1sec
+  OzOled.setPowerOff();
+  
+  //sleep_mode(); //Go to sleep! Wake up 4 sec later
+  goToSleep ();
   /*OzOled.clearDisplay();
   displayPres();
   delay(2000);*/
+}
+
+void goToSleep ()
+  {
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  ADCSRA = 0;            // turn off ADC
+  //power_all_disable ();  // power off ADC, Timer 0 and 1, serial interface
+  sleep_enable();
+  sleep_cpu();                             
+  sleep_disable();   
+  //power_all_enable();    // power everything back on
+  }  // end of goToSleep
+
+void setup_watchdog(int timerPrescaler) {
+
+  if (timerPrescaler > 9 ) timerPrescaler = 9; //Limit incoming amount to legal settings
+
+  byte bb = timerPrescaler & 7; 
+  if (timerPrescaler > 7) bb |= (1<<5); //Set the special 5th bit if necessary
+
+  //This order of commands is important and cannot be combined
+  MCUSR &= ~(1<<WDRF); //Clear the watch dog reset
+  WDTCR |= (1<<WDCE) | (1<<WDE); //Set WD_change enable, set WD enable
+  WDTCR = bb; //Set new watchdog timeout value
+  WDTCR |= _BV(WDIE); //Set the interrupt enable, this will keep unit from resetting after each int
 }
 
 void displayHello() {
