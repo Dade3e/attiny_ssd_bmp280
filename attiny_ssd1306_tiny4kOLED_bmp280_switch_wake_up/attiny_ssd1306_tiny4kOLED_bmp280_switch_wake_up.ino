@@ -10,8 +10,7 @@
 //#include <TinyOzOLEDlimpfish.h>
 #include <Tiny4kOLED.h>
 #include "font16x32digits.h"
-//#include "haiku_font.h"
-#include "homespun_font.h"
+#include "ModernDos8.h"
 
 #include <TinyWireM.h>
 
@@ -88,7 +87,7 @@ void displayTemp() {
   int p1 = pres/100;
 
   oled.clear();
-  oled.setFont(FONTHOMESPUN);
+  oled.setFont(FONT8X8MDOS);
   oled.setCursor(0, 2);
   oled.print("Temp:");
   oled.setFont(FONT16X32DIGITS);
@@ -98,7 +97,7 @@ void displayTemp() {
   delay(1000);
 
   oled.clear();
-  oled.setFont(FONTHOMESPUN);
+  oled.setFont(FONT8X8MDOS);
   oled.setCursor(0, 2);
   oled.print("Press:");
   oled.setFont(FONT16X32DIGITS);
