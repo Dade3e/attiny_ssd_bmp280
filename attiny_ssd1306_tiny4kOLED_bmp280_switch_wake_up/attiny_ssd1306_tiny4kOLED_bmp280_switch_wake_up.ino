@@ -10,7 +10,7 @@
 //#include <TinyOzOLEDlimpfish.h>
 #include <Tiny4kOLED.h>
 #include "font16x32digits.h"
-#include "ModernDos8.h"
+#include "7linedigital_font.h"
 
 #include <TinyWireM.h>
 
@@ -77,6 +77,8 @@ void goToSleep ()
 }  // end of goToSleep
 
 void displayTemp() {
+  climateSensor.begin();
+
   int32_t temp = climateSensor.getTemperatureCelcius();
   int32_t pres = climateSensor.getPressure();
 
@@ -87,16 +89,24 @@ void displayTemp() {
   int p1 = pres/100;
 
   oled.clear();
+  /*
   oled.setFont(FONT8X8MDOS);
   oled.setCursor(0, 2);
   oled.print("Temp:");
   oled.setFont(FONT16X32DIGITS);
   oled.setCursor(48, 0);
+  oled.print(tmp3);*/
+
+  
+  oled.setFont(FONT16X32DIGITS);
+  oled.setCursor(0, 0);
   oled.print(tmp3);
+  oled.setFont(FONT7LINEDIGITAL);
+  oled.print(" CELSIUS");
 
-  delay(1000);
+  delay(2000);
 
-  oled.clear();
+  /*oled.clear();
   oled.setFont(FONT8X8MDOS);
   oled.setCursor(0, 2);
   oled.print("Press:");
@@ -104,5 +114,5 @@ void displayTemp() {
   oled.setCursor(64, 0);
   oled.print(p1);
 
-  delay(1000);
+  delay(1000);*/
 }
